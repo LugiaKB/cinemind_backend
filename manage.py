@@ -6,7 +6,22 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cinemind.settings')
+
+    environment_settings = {
+        "local": "cinemind.settings.local",
+        "development": "cinemind.settings.development",
+        "production": "cinemind.settings.production",
+    }
+
+    settings = environment_settings.get(
+        os.getenv("ENVIRONMENT"), "cinemind.settings.local"
+    )
+
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE",
+        settings,
+    )
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -18,5 +33,5 @@ def main():
     execute_from_command_line(sys.argv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
