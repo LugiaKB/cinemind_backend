@@ -6,11 +6,15 @@ from google.genai.errors import APIError
 
 
 class GeminiClient:
-    def __init__(self, model: str = "gemini-2.5-flash "):
+    def __init__(self, model: str = "gemini-2.5-flash"):
 
         try:
-
-            self.client = genai.Client()
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError(
+                    "GEMINI_API_KEY não encontrado nas variáveis de ambiente."
+                )
+            self.client = genai.Client(api_key=api_key)
             self.model = model
 
         except Exception as e:
@@ -28,12 +32,12 @@ class GeminiClient:
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
             response_mime_type="application/json",
-            response_schema=types.Type.from_dict(json_schema),
+            response_schema=json_schema,
         )
 
         try:
             response = self.client.models.generate_content(
-                model=self.model_name, contents=prompt, config=config
+                model=self.model, contents=prompt, config=config
             )
 
             if response.text:
