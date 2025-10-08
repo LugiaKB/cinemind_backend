@@ -12,8 +12,9 @@ pytest = "==8.3.4"
 pytest-django = "==4.9.0"
 djangorestframework-simplejwt = "==5.3.1"
 django-filter = "==24.3"
-google-genai = "*" 
 pydantic = "==2.8.0"
+"google.genai" = "*"
+google-genai = "*"
 
 [dev-packages]
 

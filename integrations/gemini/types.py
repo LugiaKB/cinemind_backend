@@ -1,19 +1,6 @@
-from typing import List
-from typing_extensions import Annotated
+from typing import List,Dict
+from typing_extensions import Annotated,Optional
 from pydantic import BaseModel, Field
-
-
-class Input(BaseModel):
-    name: Annotated[str, Field(description="User's name")]
-    preferences: Annotated[List[str], Field(description="User's preferences")]
-    personality: Annotated[List[str], Field(description="User's personality traits")]
-    current_vibe: Annotated[
-        str,
-        Field(
-            description="Current vibe or mood of the user, e.g., happy, sad, adventurous"
-        ),
-    ]
-
 
 class Movie(BaseModel):
     title: Annotated[str, Field(description="Title of the movie to recommend")]
@@ -21,7 +8,20 @@ class Movie(BaseModel):
     reason_for_recommendation: Annotated[
         str, Field(description="Reason why the movie was recommended to the user")
     ]
-    tags: Annotated[List[str], Field(description="Keywords that describe the movie")]
+    emotions: Annotated[List[str], Field(description="Emotions the movie is link to")]
+
+
+
+
+class Input(BaseModel):
+    preferences: Annotated[List[str], Field(description="User's preferences")]
+    score: Annotated[Dict[str, int], Field(description="User's personality traits")]
+    blacklist: Annotated[List[str], Field(description="Movies to avoid")]
+
+    
+
+
+
 
 
 class Output(BaseModel):
