@@ -2,7 +2,7 @@
 
 from django.urls import path
 # --- A LINHA ABAIXO É A CORREÇÃO ---
-from .views import UserCreateView, QuestionListView, SubmitAnswersView,
+from .views import UserCreateView, QuestionListView, SubmitAnswersView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
