@@ -90,9 +90,9 @@ class CreateSuperUserView(views.APIView):
         User = get_user_model()
         
         # --- DEFINA AQUI AS SUAS CREDENCIAIS ---
-        username = "seu_nome_de_admin"  # Escolha um nome de utilizador
-        email = "seu_email@exemplo.com"   # Coloque o seu e-mail
-        password = "SuaSenhaSuperForte123!" # Escolha uma palavra-passe forte
+        username = "cinemind_user"  # Escolha um nome de utilizador
+        email = "wnrj@cin.ufpe.br"   # Coloque o seu e-mail
+        password = "cinemind" # Escolha uma palavra-passe forte
         # -----------------------------------------
 
         if User.objects.filter(username=username).exists():
