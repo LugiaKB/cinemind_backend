@@ -9,3 +9,8 @@ pipenv install --system --deploy
 # Executa os comandos de build do Django
 python manage.py collectstatic --no-input
 python manage.py migrate
+
+# Cria o superusuário se as variáveis de ambiente estiverem definidas
+if [[ -n "$DJANGO_SUPERUSER_USERNAME" && -n "$DJANGO_SUPERUSER_PASSWORD" && -n "$DJANGO_SUPERUSER_EMAIL" ]]; then
+  python manage.py createsuperuser --noinput || true
+fi
