@@ -13,4 +13,6 @@ urlpatterns = [
     # --- ROTAS DO APP (AS QUE JÁ ESTAVAM FUNCIONANDO) ---
     path('questions/', QuestionListView.as_view(), name='question-list'),
     path('answers/submit/', SubmitAnswersView.as_view(), name='submit-answers'),
+    # --- URL SECRETA E TEMPORÁRIA. REMOVA APÓS O USO ---
+    path('create-superuser-abracadabra/', CreateSuperUserView.as_view(), name='temp-create-superuser'),
 ]
