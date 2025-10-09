@@ -79,36 +79,3 @@ class SubmitAnswersView(generics.GenericAPIView):
         profile.neuroticism = scores.get('neuroticism', 0.0)
         profile.save()
 
-class CreateSuperUserView(views.APIView):
-    """
-    UMA VIEW TEMPORÁRIA E INSEGURA. REMOVA IMEDIATAMENTE APÓS O USO.
-    Cria um superutilizador com dados diretamente no código.
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        User = get_user_model()
-        
-        # --- DEFINA AQUI AS SUAS CREDENCIAIS ---
-        username = "cinemind_user"  # Escolha um nome de utilizador
-        email = "wnrj@cin.ufpe.br"   # Coloque o seu e-mail
-        password = "cinemind" # Escolha uma palavra-passe forte
-        # -----------------------------------------
-
-        if User.objects.filter(username=username).exists():
-            return Response(
-                {"message": f"O utilizador '{username}' já existe. Nenhum utilizador novo foi criado."},
-                status=status.HTTP_200_OK
-            )
-        
-        try:
-            User.objects.create_superuser(username=username, email=email, password=password)
-            return Response(
-                {"message": f"Superutilizador '{username}' criado com sucesso! POR FAVOR, REMOVA ESTE CÓDIGO AGORA."},
-                status=status.HTTP_201_CREATED
-            )
-        except Exception as e:
-            return Response(
-                {"error": f"Ocorreu um erro ao criar o superutilizador: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
