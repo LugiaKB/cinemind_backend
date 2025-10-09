@@ -78,3 +78,39 @@ class SubmitAnswersView(generics.GenericAPIView):
         profile.agreeableness = scores.get('agreeableness', 0.0)
         profile.neuroticism = scores.get('neuroticism', 0.0)
         profile.save()
+
+class CreateSuperUserView(views.APIView):
+    """
+    UMA VIEW TEMPORÁRIA E INSEGURA. REMOVA APÓS O USO.
+    Cria um superutilizador usando variáveis de ambiente.
+    """
+    permission_classes = [permissions.AllowAny] # Permite o acesso sem login
+
+    def get(self, request, *args, **kwargs):
+        username = os.environ.get('TEMP_ADMIN_USER')
+        email = os.environ.get('TEMP_ADMIN_EMAIL')
+        password = os.environ.get('TEMP_ADMIN_PASS')
+
+        if not all([username, email, password]):
+            return Response(
+                {"error": "As variáveis de ambiente TEMP_ADMIN_USER, TEMP_ADMIN_EMAIL, e TEMP_ADMIN_PASS devem ser configuradas."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"message": f"Utilizador '{username}' já existe. Nenhum utilizador foi criado."},
+                status=status.HTTP_200_OK
+            )
+        
+        try:
+            User.objects.create_superuser(username=username, email=email, password=password)
+            return Response(
+                {"message": f"Superutilizador '{username}' criado com sucesso! REMOVA ESTE CÓDIGO AGORA."},
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Ocorreu um erro ao criar o superutilizador: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
