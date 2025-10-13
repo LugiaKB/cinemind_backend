@@ -44,6 +44,7 @@ class GeminiService:
         personality_scores = "\n".join([f"- {trait}: {score}" for trait, score in user_data.score.items()])
         blacklist_titles = ', '.join([movie.title for movie in user_data.blacklist]) if user_data.blacklist else "Nenhum"
 
+        # --- ALTERAÇÃO PRINCIPAL AQUI ---
         return (
             "Analise o perfil de usuário a seguir e gere as recomendações de acordo com as regras definidas.\n\n"
             "**Perfil do Usuário:**\n"
@@ -51,7 +52,7 @@ class GeminiService:
             f"- Traços de Personalidade (Scores):\n{personality_scores}\n"
             f"- Filmes a Evitar: {blacklist_titles}\n\n"
             "**Sua Tarefa:**\n"
-            "Gere uma lista curada contendo um total de **15 recomendações de filmes**. A seleção deve ser balanceada para cobrir 5 emoções principais, com **exatamente 3 filmes ranqueados (rank 1, 2, 3)** para cada uma das seguintes emoções:\n\n"
+            "Gere uma lista curada contendo um total de **10 recomendações de filmes**. A seleção deve ser balanceada para cobrir 5 emoções principais, com **exatamente 2 filmes ranqueados (rank 1, 2)** para cada uma das seguintes emoções:\n\n"
             "1.  **Alegria** (Filmes divertidos, otimistas, comédias)\n"
             "2.  **Tristeza** (Filmes emotivos, dramas, que provocam reflexão)\n"
             "3.  **Medo/Tensão** (Filmes de suspense, terror, thrillers)\n"
