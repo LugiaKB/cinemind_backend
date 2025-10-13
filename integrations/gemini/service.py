@@ -5,7 +5,7 @@ from integrations.gemini.client import GeminiClient
 from integrations.gemini.types import Input, Output
 
 class GeminiService:
-    RECOMMENDATION_MODEL = "gemini-1.5-flash"
+    RECOMMENDATION_MODEL = "gemini-2.5-flash"
 
     def __init__(self):
         self.client = GeminiClient(model=self.RECOMMENDATION_MODEL)
