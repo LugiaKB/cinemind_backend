@@ -18,6 +18,7 @@ class Movie(BaseModel):
     """
     rank: Annotated[int, Field(description="Rank of the movie within its mood (1, 2, or 3)")]
     title: Annotated[str, Field(description="Title of the movie to recommend")]
+    year: Annotated[int, Field(description="Year the movie was released")]
     synopsis: Annotated[str, Field(description="Short description without spoilers")]
     reason_for_recommendation: Annotated[
         str, Field(description="Reason why the movie was recommended to the user based on their profile")

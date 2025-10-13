@@ -74,6 +74,8 @@ class RecommendationItem(models.Model):
     external_id = models.CharField(max_length=100, help_text="ID do filme vindo da API externa")
     title = models.CharField(max_length=255)
     rank = models.PositiveSmallIntegerField(help_text="Posição (1, 2, ou 3) do filme dentro do seu humor")
+    # --- CAMPO ADICIONADO ---
+    thumbnail_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL do pôster do filme")
     movie_metadata = models.TextField(help_text="Metadados serializados (JSON string)")
     relevance_score = models.FloatField(null=True, blank=True)
 
