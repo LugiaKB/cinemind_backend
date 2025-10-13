@@ -79,14 +79,16 @@ class SetFavoriteGenresView(views.APIView):
 class GenerateRecommendationsView(views.APIView):
     """
     [PRINCIPAL] Gera um novo conjunto de recomendações personalizadas.
+    Otimizado para ambientes com pouca memória.
     """
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = RecommendationSetSerializer # <-- ADICIONE ESTA LINHA
+    serializer_class = RecommendationSetSerializer
 
     def post(self, request, *args, **kwargs):
         user = request.user
         profile = user.profile
         
+        # 1. Coletar dados do perfil (sem alterações)
         favorite_genres = [pg.genre.name for pg in ProfileGenre.objects.filter(profile=profile)]
         if not favorite_genres:
             return Response({"error": "Por favor, defina seus gêneros favoritos primeiro."}, status=status.HTTP_400_BAD_REQUEST)
@@ -106,19 +108,21 @@ class GenerateRecommendationsView(views.APIView):
             blacklist=blacklist_input
         )
 
+        # 2. Chamar o serviço do Gemini (sem alterações)
         gemini_service = GeminiService()
         recommendations_output = gemini_service.get_recommendations(gemini_input)
 
         if not recommendations_output or not recommendations_output.recommendations:
             return Response({"error": "Não foi possível gerar recomendações no momento."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+        # 3. Processar e Salvar Recomendações (COM A NOVA LÓGICA OTIMIZADA)
         try:
             with transaction.atomic():
+                # Desativa o set antigo e cria um novo
                 RecommendationSet.objects.filter(user=user, is_active=True).update(is_active=False)
                 new_set = RecommendationSet.objects.create(user=user, is_active=True, input_snapshot=gemini_input.model_dump_json())
 
                 moods_from_db = {mood.name: mood for mood in Mood.objects.all()}
-                items_to_create = []
                 tmdb_service = TMDbService()
 
                 for mood_rec in recommendations_output.recommendations:
@@ -126,23 +130,23 @@ class GenerateRecommendationsView(views.APIView):
                     if not mood_obj: continue
 
                     for movie in mood_rec.movies:
+                        # Para cada filme, busca a thumbnail e salva IMEDIATAMENTE
                         thumbnail_url = tmdb_service.get_poster_url(title=movie.title, year=movie.year)
-                        items_to_create.append(
-                            RecommendationItem(
-                                recommendation_set=new_set,
-                                mood=mood_obj,
-                                external_id=f"tmdb:{movie.title}-{movie.year}",
-                                title=movie.title,
-                                rank=movie.rank,
-                                thumbnail_url=thumbnail_url,
-                                movie_metadata=json.dumps(movie.model_dump())
-                            )
+                        
+                        RecommendationItem.objects.create(
+                            recommendation_set=new_set,
+                            mood=mood_obj,
+                            external_id=f"tmdb:{movie.title}-{movie.year}",
+                            title=movie.title,
+                            rank=movie.rank,
+                            thumbnail_url=thumbnail_url,
+                            movie_metadata=json.dumps(movie.model_dump())
                         )
-                RecommendationItem.objects.bulk_create(items_to_create)
 
         except Exception as e:
             print(f"Erro ao processar e salvar recomendações: {e}")
             return Response({"error": "Ocorreu um erro ao salvar as recomendações."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # 4. Retornar o novo conjunto (agora ele busca os items que acabaram de ser salvos)
         serializer = RecommendationSetSerializer(new_set)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
