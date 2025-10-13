@@ -5,47 +5,60 @@ from integrations.gemini.client import GeminiClient
 from integrations.gemini.types import Input, Output
 
 class GeminiService:
-
-    BASE_SYSTEM_INSTRUCTION = (
-        "Você é um assistente virtual especializado em recomendar filmes de forma personalizada. "
-        "Seu objetivo é sugerir opções que estejam alinhadas com os gostos, preferências de gênero e "
-        "personalidade do usuário. Sua resposta deve estar EXCLUSIVAMENTE no formato JSON, aderindo ao esquema fornecido."
-    )
-
     RECOMMENDATION_MODEL = "gemini-1.5-flash"
 
     def __init__(self):
         self.client = GeminiClient(model=self.RECOMMENDATION_MODEL)
 
     def _build_system_instruction(self) -> str:
-        return self.BASE_SYSTEM_INSTRUCTION
+        return (
+            "Você é um assistente de recomendação de filmes altamente especializado. "
+            "Sua função é analisar o perfil de um usuário e sugerir filmes que se alinhem perfeitamente "
+            "com seus gostos e o estado emocional desejado. Sua resposta deve estar EXCLUSIVAMENTE "
+            "no formato JSON, aderindo ao esquema fornecido.\n\n"
+            "**Guia de Interpretação dos Traços de Personalidade (Big Five/OCEAN):**\n"
+            "Para que suas recomendações sejam precisas, você DEVE usar o guia abaixo para entender como cada traço molda as preferências do usuário:\n\n"
+            "* **Openness (Abertura a Novas Experiências):**\n"
+            "  - **Score Alto**: Curiosidade intelectual, criatividade. Preferem filmes complexos, não convencionais, de arte, ficção científica com grandes conceitos ou documentários que desafiam o pensamento.\n"
+            "  - **Score Baixo**: Praticidade, preferência pelo familiar. Preferem filmes com narrativas diretas, gêneros clássicos (ação, comédia romântica) e histórias com as quais podem se identificar facilmente.\n\n"
+            "* **Conscientiousness (Conscienciosidade):**\n"
+            "  - **Score Alto**: Organização, disciplina. Apreciam filmes com roteiros bem estruturados, narrativas lógicas, dramas históricos precisos ou histórias sobre superação.\n"
+            "  - **Score Baixo**: Espontaneidade, flexibilidade. Podem gostar mais de comédias caóticas, filmes de aventura imprevisíveis ou thrillers com muitas reviravoltas.\n\n"
+            "* **Extraversion (Extroversão):**\n"
+            "  - **Score Alto**: Sociabilidade, busca por estímulos externos. Tendem a gostar de blockbusters, musicais e filmes de ação com alto valor de entretenimento.\n"
+            "  - **Score Baixo (Introversão)**: Preferência por introspecção. Costumam preferir dramas focados em personagens, thrillers psicológicos e histórias que convidam à reflexão.\n\n"
+            "* **Agreeableness (Amabilidade):**\n"
+            "  - **Score Alto**: Empatia, compaixão. Sentem-se atraídos por histórias inspiradoras, 'feel-good movies', dramas familiares e comédias românticas.\n"
+            "  - **Score Baixo**: Ceticismo, pensamento crítico. Podem preferir anti-heróis, humor ácido, comédia de humor negro ou dramas cínicos.\n\n"
+            "* **Neuroticism (Neuroticismo / Instabilidade Emocional):**\n"
+            "  - **Score Alto**: Sensibilidade a estresse. Podem usar filmes como catarse (gostando de dramas intensos ou terror) OU para evitar estresse (buscando filmes leves e reconfortantes).\n"
+            "  - **Score Baixo (Estabilidade Emocional)**: Calma, resiliência. Geralmente são flexíveis e apreciam uma vasta gama de tons emocionais sem se sentirem sobrecarregados.\n\n"
+            "**Regras para Recomendação:**\n"
+            "1. **Conexão Emocional**: Cada filme recomendado deve ser um excelente exemplo do sentimento alvo.\n"
+            "2. **Afinidade de Gênero**: A seleção deve priorizar os gêneros e temas favoritos do usuário.\n"
+            "3. **Coerência com a Personalidade**: A narrativa e o tom do filme devem ressoar com os traços de personalidade fornecidos, usando o guia acima.\n"
+            "4. **Evitar Blacklist**: JAMAIS recomende filmes que estão na lista de filmes a evitar.\n"
+        )
 
     def _build_user_prompt(self, user_data: Input) -> str:
-        """
-        Constrói o prompt que instrui a IA a retornar 15 filmes
-        categorizados e ranqueados pelos 5 humores.
-        """
-        prompt = f"""
-        O usuário forneceu as seguintes informações para uma recomendação:
+        personality_scores = "\n".join([f"- {trait}: {score}" for trait, score in user_data.score.items()])
+        blacklist_titles = ', '.join([movie.title for movie in user_data.blacklist]) if user_data.blacklist else "Nenhum"
 
-        - Nome: {user_data.name}
-        - Gêneros/Temas Favoritos: {', '.join(user_data.preferences)}
-        - Traços de Personalidade: {', '.join(user_data.personality)}
-
-        Sua tarefa é gerar uma lista de 15 recomendações de filmes, divididas em 5 categorias de humor.
-        Para CADA UMA das seguintes categorias de humor, você deve fornecer EXATAMENTE 3 filmes, ranqueados de 1 a 3 em ordem de relevância para o perfil do usuário.
-
-        As categorias de humor são:
-        1.  **Alegria** (Filmes divertidos, otimistas, comédias)
-        2.  **Tristeza** (Filmes emotivos, dramas, que provocam reflexão)
-        3.  **Medo/Tensão** (Filmes de suspense, terror, thrillers)
-        4.  **Curiosidade** (Filmes de mistério, ficção científica, documentários intrigantes)
-        5.  **Relaxamento** (Filmes leves, confortáveis, romances tranquilos)
-
-        Para cada um dos 15 filmes, preencha todos os campos do esquema JSON, incluindo o rank (1, 2 ou 3) e uma justificativa clara (reason_for_recommendation) que conecte o filme ao perfil do usuário.
-        A resposta DEVE conter a lista completa com os 5 humores.
-        """
-        return prompt
+        return (
+            "Analise o perfil de usuário a seguir e gere as recomendações de acordo com as regras definidas.\n\n"
+            "**Perfil do Usuário:**\n"
+            f"- Gêneros/Temas Favoritos: {', '.join(user_data.preferences)}\n"
+            f"- Traços de Personalidade (Scores):\n{personality_scores}\n"
+            f"- Filmes a Evitar: {blacklist_titles}\n\n"
+            "**Sua Tarefa:**\n"
+            "Gere uma lista curada contendo um total de **15 recomendações de filmes**. A seleção deve ser balanceada para cobrir 5 emoções principais, com **exatamente 3 filmes ranqueados (rank 1, 2, 3)** para cada uma das seguintes emoções:\n\n"
+            "1.  **Alegria** (Filmes divertidos, otimistas, comédias)\n"
+            "2.  **Tristeza** (Filmes emotivos, dramas, que provocam reflexão)\n"
+            "3.  **Medo/Tensão** (Filmes de suspense, terror, thrillers)\n"
+            "4.  **Curiosidade** (Filmes de mistério, ficção científica, conceitos intrigantes)\n"
+            "5.  **Relaxamento** (Filmes leves, confortáveis, romances tranquilos)\n\n"
+            "Para cada filme, forneça uma justificativa clara (reason_for_recommendation) que conecte o filme diretamente ao perfil do usuário (gêneros e personalidade)."
+        )
 
     def get_recommendations(self, user_data: Input) -> Optional[Output]:
         system_instruction = self._build_system_instruction()
@@ -59,12 +72,17 @@ class GeminiService:
             json_schema=json_schema,
         )
 
+        if raw_response is None:
+            print("ERRO DE RECOMENDAÇÃO: A resposta da API foi nula.")
+            return None
+        
         if raw_response.get("status") == "error":
-            print(f"ERRO DE RECOMENDAÇÃO: {raw_response['message']}")
+            print(f"ERRO DE RECOMENDAÇÃO: {raw_response.get('message', 'Erro desconhecido da API')}")
             return None
 
         try:
             return Output(**raw_response)
         except Exception as e:
             print(f"ERRO DE VALIDAÇÃO DE SAÍDA: O JSON da LLM não se encaixa no modelo Output: {e}")
+            print(f"JSON Recebido: {raw_response}")
             return None
