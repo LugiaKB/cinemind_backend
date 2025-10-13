@@ -1,10 +1,13 @@
 # accounts/serializers.py
 
-from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Profile, Question, Answer
+from django.contrib.auth.models import User
+from .models import Question, Answer
 
 class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o modelo User. Usado no registro de novos usuários.
+    """
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password']
@@ -12,28 +15,33 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
-        # Cria um perfil automaticamente para cada novo usuário
-        Profile.objects.create(user=user)
         return user
 
-class ProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    
-    class Meta:
-        model = Profile
-        fields = '__all__'
-
 class QuestionSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o modelo Question. Usado para listar as perguntas.
+    """
     class Meta:
         model = Question
         fields = '__all__'
 
 
+# --- SERIALIZER CORRIGIDO E ADICIONADO ---
+
 class AnswerSerializer(serializers.ModelSerializer):
-    # Adicionamos o question_id para que seja write_only
-    question_id = serializers.UUIDField(write_only=True)
-    
+    """
+    Serializer para uma única resposta dentro da submissão.
+    Valida o question_id e o selected_value.
+    """
+    question_id = serializers.UUIDField(source='question.id')
+
     class Meta:
         model = Answer
-        # O profile será pego do usuário logado, não enviado pelo frontend
         fields = ['question_id', 'selected_value']
+
+class AnswerSubmissionSerializer(serializers.Serializer):
+    """
+    Serializer principal para o endpoint de submissão de respostas.
+    Espera um campo 'answers' que é uma lista de objetos de resposta.
+    """
+    answers = AnswerSerializer(many=True)

@@ -4,6 +4,7 @@ import json
 from django.db import transaction
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
+from .serializers import SetFavoriteGenresSerializer # Adicione este import
 
 # Modelos
 from .models import (
@@ -70,6 +71,7 @@ class SetFavoriteGenresView(views.APIView):
             print(f"Erro ao salvar gêneros favoritos: {e}")
             return Response({"error": "Ocorreu um erro ao salvar suas preferências."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # Retorna os gêneros que foram salvos com sucesso
         response_serializer = ProfileGenreSerializer(ProfileGenre.objects.filter(profile=profile), many=True)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -79,6 +81,7 @@ class GenerateRecommendationsView(views.APIView):
     [PRINCIPAL] Gera um novo conjunto de recomendações personalizadas.
     """
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = RecommendationSetSerializer # <-- ADICIONE ESTA LINHA
 
     def post(self, request, *args, **kwargs):
         user = request.user

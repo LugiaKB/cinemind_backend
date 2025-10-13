@@ -1,17 +1,16 @@
 # accounts/views.py
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from rest_framework import generics, permissions, views, status
 from rest_framework.response import Response
-from collections import defaultdict
-from .serializers import UserSerializer, QuestionSerializer, AnswerSerializer
-from .models import Question, Profile, Answer
+
+from .models import Question, Answer, Profile
+from .serializers import UserSerializer, QuestionSerializer, AnswerSubmissionSerializer
 
 class UserCreateView(generics.CreateAPIView):
     """
     Endpoint para registrar um novo usuário no sistema.
-    Qualquer pessoa pode acessar esta rota para criar uma conta.
-    Retorna os dados do usuário criado (sem a senha).
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -20,62 +19,71 @@ class UserCreateView(generics.CreateAPIView):
 class QuestionListView(generics.ListAPIView):
     """
     Endpoint para listar todas as perguntas do questionário Big Five.
-    O usuário deve estar autenticado para acessar esta lista.
     """
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-class SubmitAnswersView(generics.GenericAPIView):
+class SubmitAnswersView(views.APIView):
     """
-    Endpoint para o usuário submeter suas respostas ao questionário.
-    Recebe uma lista de respostas, recalcula e atualiza os scores de 
-    personalidade no perfil do usuário. Requer autenticação.
+    Recebe e processa as respostas do questionário de personalidade de um usuário.
+    Calcula os scores do Big Five e os salva no perfil do usuário.
     """
-    serializer_class = AnswerSerializer
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AnswerSubmissionSerializer
 
     def post(self, request, *args, **kwargs):
         profile = request.user.profile
-        answers_data = request.data.get('answers', [])
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not isinstance(answers_data, list) or not answers_data:
+        answers_data = serializer.validated_data['answers']
+        
+        # --- CORREÇÃO 1 ---
+        # Acessa o ID da questão através do dicionário aninhado
+        question_ids = [answer['question']['id'] for answer in answers_data]
+        
+        questions_map = {q.id: q for q in Question.objects.filter(id__in=question_ids)}
+
+        if len(questions_map) != len(answers_data):
+            return Response({"error": "Uma ou mais questões enviadas são inválidas."}, status=status.HTTP_400_BAD_REQUEST)
+
+        scores = {
+            'openness': 0.0, 'conscientiousness': 0.0, 'extraversion': 0.0,
+            'agreeableness': 0.0, 'neuroticism': 0.0,
+        }
+
+        for answer in answers_data:
+            # --- CORREÇÃO 2 ---
+            question = questions_map[answer['question']['id']]
+            scores[question.attribute] += answer['selected_value']
+
+        try:
+            with transaction.atomic():
+                for answer_data in answers_data:
+                    Answer.objects.update_or_create(
+                        profile=profile,
+                        # --- CORREÇÃO 3 ---
+                        question_id=answer_data['question']['id'],
+                        defaults={'selected_value': answer_data['selected_value']}
+                    )
+
+                profile.openness = scores['openness']
+                profile.conscientiousness = scores['conscientiousness']
+                profile.extraversion = scores['extraversion']
+                profile.agreeableness = scores['agreeableness']
+                profile.neuroticism = scores['neuroticism']
+                profile.save()
+
+        except Exception as e:
+            print(f"Erro ao salvar respostas e perfil: {e}")
             return Response(
-                {"error": "O campo 'answers' deve ser uma lista e não pode estar vazio."},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Ocorreu um erro ao processar suas respostas."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # Deleta respostas antigas para garantir que o cálculo seja sempre sobre o novo conjunto
-        Answer.objects.filter(profile=profile).delete()
-
-        # Salva as novas respostas
-        for answer_data in answers_data:
-            serializer = self.get_serializer(data=answer_data)
-            serializer.is_valid(raise_exception=True)
-            question = Question.objects.get(id=serializer.validated_data['question_id'])
-            Answer.objects.create(
-                profile=profile,
-                question=question,
-                selected_value=serializer.validated_data['selected_value']
-            )
-
-        # Calcula os novos scores
-        self.calculate_and_update_scores(profile)
-        
-        return Response({"message": "Respostas enviadas e perfil atualizado com sucesso!"}, status=status.HTTP_200_OK)
-
-    def calculate_and_update_scores(self, profile):
-        scores = defaultdict(int)
-        answers = Answer.objects.filter(profile=profile).select_related('question')
-        
-        for answer in answers:
-            attribute = answer.question.attribute
-            scores[attribute] += answer.selected_value
-            
-        profile.openness = scores.get('openness', 0.0)
-        profile.conscientiousness = scores.get('conscientiousness', 0.0)
-        profile.extraversion = scores.get('extraversion', 0.0)
-        profile.agreeableness = scores.get('agreeableness', 0.0)
-        profile.neuroticism = scores.get('neuroticism', 0.0)
-        profile.save()
-
+        return Response({
+            "message": "Respostas computadas com sucesso!",
+            "scores": scores
+        }, status=status.HTTP_200_OK)
