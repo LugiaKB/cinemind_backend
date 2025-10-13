@@ -37,3 +37,13 @@ class ProfileGenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProfileGenre
         fields = ('genre_ids',)
+
+class SetFavoriteGenresSerializer(serializers.Serializer):
+    """
+    Serializer para validar a lista de UUIDs de gênero enviada pelo usuário.
+    """
+    genre_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        help_text="Lista de IDs dos gêneros favoritos."
+    )
