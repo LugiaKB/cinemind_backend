@@ -7,6 +7,7 @@ from .serializers import GenreSerializer, RecommendationSetSerializer, ProfileGe
 # --- NOVAS IMPORTAÇÕES (AQUI ESTÁ A CORREÇÃO) ---
 from integrations.gemini.service import GeminiService
 from integrations.gemini.types import Input as GeminiInput
+from integrations.tmdb import TMDbService
 import json
 
 class GenreListView(generics.ListAPIView):
@@ -64,8 +65,7 @@ class SetFavoriteGenresView(generics.GenericAPIView):
 class GenerateRecommendationsView(views.APIView):
     """
     [PRINCIPAL] Endpoint que gera um novo conjunto de recomendações personalizadas.
-    Ele coleta o perfil do usuário (personalidade + gêneros), chama a IA do Gemini,
-    salva os resultados e retorna os 15 filmes recomendados. Requer autenticação.
+    Coleta o perfil, chama a IA, enriquece os dados com a API do TMDb e salva o resultado.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -73,82 +73,73 @@ class GenerateRecommendationsView(views.APIView):
         user = request.user
         profile = user.profile
         
-        # 1. Coletar dados do perfil
+        # 1. Coletar dados do perfil (sem alterações)
         favorite_genres = [pg.genre.name for pg in ProfileGenre.objects.filter(profile=profile)]
         if not favorite_genres:
-            return Response(
-                {"error": "Por favor, defina seus gêneros favoritos primeiro."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Por favor, defina seus gêneros favoritos primeiro."}, status=status.HTTP_400_BAD_REQUEST)
 
-        personality_traits = self._map_scores_to_traits(profile)
+        personality_scores = {
+            "openness": profile.openness, "conscientiousness": profile.conscientiousness,
+            "extraversion": profile.extraversion, "agreeableness": profile.agreeableness,
+            "neuroticism": profile.neuroticism,
+        }
+        
+        blacklist_movies = BlacklistedMovie.objects.filter(user=user)
+        blacklist_input = [BlacklistedMovieInput(title=movie.title) for movie in blacklist_movies]
 
-        # O 'current_vibe' foi removido
         gemini_input = GeminiInput(
-            name=user.username,
             preferences=favorite_genres,
-            personality=personality_traits
+            score=personality_scores,
+            blacklist=blacklist_input
         )
 
-        # 2. Chamar o serviço do Gemini
+        # 2. Chamar o serviço do Gemini (sem alterações)
         gemini_service = GeminiService()
         recommendations_output = gemini_service.get_recommendations(gemini_input)
 
         if not recommendations_output or not recommendations_output.recommendations:
-            return Response(
-                {"error": "Não foi possível gerar recomendações no momento. Tente novamente mais tarde."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+            return Response({"error": "Não foi possível gerar recomendações no momento."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        # 3. Salvar as recomendações no banco de dados
-        RecommendationSet.objects.filter(user=user, is_active=True).update(is_active=False)
-        new_set = RecommendationSet.objects.create(
-            user=user,
-            is_active=True,
-            input_snapshot=gemini_input.model_dump_json()
-        )
+        # 3. Processar e Salvar Recomendações (COM A NOVA LÓGICA)
+        try:
+            # Desativa o set antigo e cria um novo
+            RecommendationSet.objects.filter(user=user, is_active=True).update(is_active=False)
+            new_set = RecommendationSet.objects.create(user=user, is_active=True, input_snapshot=gemini_input.model_dump_json())
 
-        moods_from_db = {mood.name: mood for mood in Mood.objects.all()}
-        items_to_create = []
+            moods_from_db = {mood.name: mood for mood in Mood.objects.all()}
+            items_to_create = []
+            
+            # Instancia o serviço do TMDb uma única vez
+            tmdb_service = TMDbService()
 
-        # Itera sobre a nova estrutura de resposta da IA
-        for mood_rec in recommendations_output.recommendations:
-            mood_name = mood_rec.mood
-            mood_obj = moods_from_db.get(mood_name)
+            for mood_rec in recommendations_output.recommendations:
+                mood_obj = moods_from_db.get(mood_rec.mood)
+                if not mood_obj: continue
 
-            if not mood_obj:
-                print(f"Aviso: Humor '{mood_name}' retornado pela IA não encontrado no banco de dados.")
-                continue
+                for movie in mood_rec.movies:
+                    # --- LÓGICA DE ENRIQUECIMENTO ---
+                    thumbnail_url = tmdb_service.get_poster_url(title=movie.title, year=movie.year)
+                    # --------------------------------
 
-            for movie in mood_rec.movies:
-                items_to_create.append(
-                    RecommendationItem(
-                        recommendation_set=new_set,
-                        mood=mood_obj,
-                        external_id=movie.title, # Provisório
-                        title=movie.title,
-                        rank=movie.rank,
-                        movie_metadata=json.dumps(movie.model_dump())
+                    items_to_create.append(
+                        RecommendationItem(
+                            recommendation_set=new_set,
+                            mood=mood_obj,
+                            external_id=f"tmdb:{movie.title}-{movie.year}", # Usando um ID mais robusto
+                            title=movie.title,
+                            rank=movie.rank,
+                            thumbnail_url=thumbnail_url,  # Salva a URL encontrada
+                            movie_metadata=json.dumps(movie.model_dump())
+                        )
                     )
-                )
 
-        RecommendationItem.objects.bulk_create(items_to_create)
+            RecommendationItem.objects.bulk_create(items_to_create)
 
-        # 4. Retornar o novo conjunto de recomendações
+        except Exception as e:
+            # Se algo der errado (ex: TMDb fora do ar), retorna um erro sem quebrar o app
+            print(f"Erro ao processar e salvar recomendações: {e}")
+            return Response({"error": "Ocorreu um erro ao salvar as recomendações."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 4. Retornar o novo conjunto (sem alterações)
         serializer = RecommendationSetSerializer(new_set)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def _map_scores_to_traits(self, profile):
-        traits = []
-        if profile.openness > 0: traits.append("Aberto a novas experiências")
-        if profile.conscientiousness > 0: traits.append("Organizado e disciplinado")
-        if profile.extraversion > 0: traits.append("Extrovertido e sociável")
-        if profile.agreeableness > 0: traits.append("Amável e cooperativo")
-        if profile.neuroticism > 0: traits.append("Emocionalmente sensível")
-        
-        if not traits:
-            traits.append("Equilibrado")
-            
-        return traits
-
-    # A função _find_mood_for_movie não é mais necessária aqui e pode ser removida
