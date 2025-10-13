@@ -1,16 +1,20 @@
 # integrations/gemini/types.py
 
-from typing import List
+from typing import List, Dict
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
+
+# --- CLASSE ADICIONADA ---
+class BlacklistedMovieInput(BaseModel):
+    title: str
 
 class Input(BaseModel):
     """
     Dados de entrada para o prompt do Gemini, sem a emoção do usuário.
     """
-    name: Annotated[str, Field(description="User's name")]
-    preferences: Annotated[List[str], Field(description="User's movie genre preferences")]
-    personality: Annotated[List[str], Field(description="User's personality traits based on Big Five")]
+    preferences: List[str] = Field(..., description="Lista de gêneros e temas favoritos do usuário.")
+    score: Dict[str, float] = Field(..., description="Dicionário com os scores de personalidade do Big Five.")
+    blacklist: List[BlacklistedMovieInput] = Field(default_factory=list, description="Lista de filmes a serem evitados.")
 
 class Movie(BaseModel):
     """
