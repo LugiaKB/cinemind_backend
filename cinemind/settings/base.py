@@ -149,4 +149,8 @@ SIMPLE_JWT = {
 }
 
 # Configurações do CORS
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(" ") if os.getenv("CORS_ALLOWED_ORIGINS") else []
+
+#CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(" ") if os.getenv("CORS_ALLOWED_ORIGINS") else []
+# ATENÇÃO: Isto permitirá que QUALQUER domínio acesse sua API.
+# Use com cuidado e garanta que suas rotas estão devidamente protegidas.
+CORS_ALLOW_ALL_ORIGINS = True
