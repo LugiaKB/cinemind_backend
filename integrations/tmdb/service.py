@@ -1,5 +1,7 @@
 from functools import lru_cache
-from typing import List, Optional
+from typing import List
+# --- IMPORTAÇÃO ADICIONADA ---
+from concurrent.futures import ThreadPoolExecutor
 from integrations.tmdb.client import TMDbClient
 
 class TMDbService:
@@ -25,25 +27,32 @@ class TMDbService:
             return {}
 
     def get_keyword_ids(self, keywords: List[str]) -> List[int]:
+        """
+        Busca o ID para uma lista de palavras-chave em paralelo para otimizar o tempo.
+        """
         keyword_ids = []
-        for keyword in keywords:
+        
+        # Função que será executada em cada thread
+        def fetch_keyword_id(keyword):
             try:
                 results = self.client.search_keyword(keyword)
                 if results:
-                    keyword_ids.append(results[0]['id'])
+                    return results[0]['id'] # Retorna o ID do resultado mais relevante
             except Exception as e:
                 print(f"Erro ao buscar ID da keyword '{keyword}': {e}")
+            return None
+
+        # --- LÓGICA DE OTIMIZAÇÃO APLICADA AQUI ---
+        with ThreadPoolExecutor(max_workers=len(keywords)) as executor:
+            # Submete todas as buscas de ID ao mesmo tempo
+            results = list(executor.map(fetch_keyword_id, keywords))
+
+        # Filtra os resultados que falharam (None)
+        keyword_ids = [kid for kid in results if kid is not None]
         return keyword_ids
 
     def discover_movies(self, genre_ids: List[int], keyword_ids: List[int]) -> List[dict]:
-        """
-        Busca filmes no TMDb usando uma combinação de IDs de género e palavra-chave.
-        """
         genres_str = ",".join(map(str, genre_ids))
-        
-        # --- CORREÇÃO APLICADA AQUI ---
-        # Para keywords, a vírgula (,) funciona como um 'AND' (muito restritivo).
-        # Usaremos o pipe (|) para funcionar como um 'OR', o que nos dará mais resultados.
         keywords_str = "|".join(map(str, keyword_ids))
         
         try:
