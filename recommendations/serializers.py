@@ -1,7 +1,6 @@
 # recommendations/serializers.py
 
 from rest_framework import serializers
-# A linha abaixo é a correção. Adicionamos ProfileGenre aqui.
 from .models import Genre, RecommendationSet, RecommendationItem, Mood, ProfileGenre
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -19,7 +18,8 @@ class RecommendationItemSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = RecommendationItem
-        fields = ['id', 'title', 'rank', 'movie_metadata', 'mood']
+        # Adicionado thumbnail_url para ser retornado na API
+        fields = ['id', 'title', 'rank', 'thumbnail_url', 'movie_metadata', 'mood']
 
 class RecommendationSetSerializer(serializers.ModelSerializer):
     items = RecommendationItemSerializer(many=True, read_only=True)
@@ -28,7 +28,6 @@ class RecommendationSetSerializer(serializers.ModelSerializer):
         model = RecommendationSet
         fields = ['id', 'created_at', 'is_active', 'items']
 
-# --- NOVO SERIALIZER (Agora com o import correto) ---
 class ProfileGenreSerializer(serializers.ModelSerializer):
     genre_ids = serializers.ListField(
         child=serializers.UUIDField(), write_only=True
@@ -39,11 +38,16 @@ class ProfileGenreSerializer(serializers.ModelSerializer):
         fields = ('genre_ids',)
 
 class SetFavoriteGenresSerializer(serializers.Serializer):
-    """
-    Serializer para validar a lista de UUIDs de gênero enviada pelo usuário.
-    """
     genre_ids = serializers.ListField(
         child=serializers.UUIDField(),
         allow_empty=False,
         help_text="Lista de IDs dos gêneros favoritos."
     )
+
+# --- NOVO SERIALIZER ADICIONADO ---
+class GenerateMoodRecommendationsSerializer(serializers.Serializer):
+    """
+    Serializer para validar o corpo da requisição da geração por humor.
+    Espera o ID do humor que o usuário selecionou.
+    """
+    mood_id = serializers.UUIDField(help_text="O ID do Mood para o qual gerar recomendações.")
