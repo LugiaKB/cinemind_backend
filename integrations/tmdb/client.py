@@ -18,18 +18,38 @@ class TMDbClient:
     def search_movie(self, title: str, year: int) -> Optional[Dict[str, Any]]:
         """
         Busca por um filme específico pelo título e ano.
+        A busca primária é feita pelo título, e o ano é usado para filtrar os resultados.
         """
         search_url = f"{self.BASE_URL}/search/movie"
         params = {
             "api_key": self.api_key,
             "query": title,
-            "year": year,
-            "language": "pt-BR"
+            "language": "pt-BR",
+            "include_adult": "false"
         }
         try:
             response = requests.get(search_url, params=params, timeout=5)
-            response.raise_for_status() # Lança um erro para status HTTP 4xx/5xx
-            return response.json()
+            response.raise_for_status()
+            data = response.json()
+
+            if not data.get("results"):
+                return None
+
+            # Filtra os resultados para encontrar a correspondência mais próxima do ano
+            best_match = None
+            for movie in data["results"]:
+                release_date = movie.get("release_date")
+                if release_date and str(year) in release_date:
+                    best_match = movie
+                    break
+            
+            # Se não encontrar uma correspondência exata do ano, retorna o primeiro resultado
+            if not best_match:
+                best_match = data["results"][0]
+
+            # Retorna um dicionário no mesmo formato que a resposta original da API
+            return {"results": [best_match]}
+
         except requests.RequestException as e:
             print(f"Erro ao chamar a API do TMDb para '{title}': {e}")
             return None
