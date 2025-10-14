@@ -2,7 +2,6 @@
 
 import json
 from django.db import transaction
-# --- IMPORTAÇÃO ADICIONADA ---
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
@@ -80,7 +79,6 @@ class CreateRecommendationSetView(generics.CreateAPIView):
 class GenerateMoodRecommendationsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    # --- DECORATOR ADICIONADO PARA CORRIGIR A DOCUMENTAÇÃO ---
     @extend_schema(
         request=GenerateMoodRecommendationsSerializer,
         responses={201: RecommendationItemSerializer(many=True)},
@@ -134,7 +132,9 @@ class GenerateMoodRecommendationsView(views.APIView):
 
         items_to_create = []
         try:
-            mood_rec = recommendations_output.recommendations
+            # --- CORREÇÃO APLICADA AQUI ---
+            # Extraímos o primeiro (e único) item da lista de recomendações.
+            mood_rec = recommendations_output.recommendations[0]
             tmdb_service = TMDbService()
 
             for movie in mood_rec.movies:
@@ -155,6 +155,9 @@ class GenerateMoodRecommendationsView(views.APIView):
             if items_to_create:
                 created_items = RecommendationItem.objects.bulk_create(items_to_create)
 
+        except (IndexError, KeyError) as e:
+            print(f"Erro de parsing na resposta do Gemini: {e}")
+            return Response({"error": "A resposta do serviço de IA foi malformada."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             print(f"Erro ao processar e salvar recomendações: {e}")
             return Response({"error": "Ocorreu um erro ao salvar as recomendações."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
