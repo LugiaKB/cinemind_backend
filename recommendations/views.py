@@ -37,17 +37,13 @@ class ActiveRecommendationSetView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        # --- ALTERAÇÃO DE OTIMIZAÇÃO APLICADA AQUI ---
-        # Usamos .prefetch_related('items') para buscar todos os itens de recomendação
-        # relacionados em uma única consulta extra, evitando o problema "N+1"
-        # que causa alto consumo de memória.
+        # Esta otimização permanece, pois é crucial para a leitura.
         return RecommendationSet.objects.prefetch_related('items').filter(user=self.request.user, is_active=True).last()
 
 
 class SetFavoriteGenresView(views.APIView):
     """
     Define os gêneros favoritos de um usuário.
-    Recebe uma lista de IDs de gênero, apaga os favoritos antigos e cria os novos.
     """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = SetFavoriteGenresSerializer
@@ -82,16 +78,15 @@ class SetFavoriteGenresView(views.APIView):
 class GenerateRecommendationsView(views.APIView):
     """
     [PRINCIPAL] Gera um novo conjunto de recomendações personalizadas.
-    Otimizado para ambientes com pouca memória.
+    Otimizado para usar bulk_create e reduzir o consumo de memória.
     """
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = RecommendationSetSerializer
 
     def post(self, request, *args, **kwargs):
         user = request.user
         profile = user.profile
         
-        # 1. Coletar dados do perfil
+        # 1. Coletar dados do perfil (sem alterações)
         favorite_genres = [pg.genre.name for pg in ProfileGenre.objects.filter(profile=profile)]
         if not favorite_genres:
             return Response({"error": "Por favor, defina seus gêneros favoritos primeiro."}, status=status.HTTP_400_BAD_REQUEST)
@@ -111,16 +106,21 @@ class GenerateRecommendationsView(views.APIView):
             blacklist=blacklist_input
         )
 
-        # 2. Chamar o serviço do Gemini
-        gemini_service = GeminiService()
-        recommendations_output = gemini_service.get_recommendations(gemini_input)
+        # 2. Chamar o serviço do Gemini (sem alterações)
+        try:
+            gemini_service = GeminiService()
+            recommendations_output = gemini_service.get_recommendations(gemini_input)
+            if not recommendations_output or not recommendations_output.recommendations:
+                return Response({"error": "Não foi possível gerar recomendações no momento."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as e:
+            print(f"Erro ao chamar o serviço Gemini: {e}")
+            return Response({"error": "Falha na comunicação com o serviço de IA."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        if not recommendations_output or not recommendations_output.recommendations:
-            return Response({"error": "Não foi possível gerar recomendações no momento."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-        # 3. Processar e Salvar Recomendações
+        # 3. Processar e Salvar Recomendações (COM A LÓGICA OTIMIZADA)
+        items_to_create = []
         try:
             with transaction.atomic():
+                # Desativa o set antigo e cria um novo
                 RecommendationSet.objects.filter(user=user, is_active=True).update(is_active=False)
                 new_set = RecommendationSet.objects.create(user=user, is_active=True, input_snapshot=gemini_input.model_dump_json())
 
@@ -132,22 +132,32 @@ class GenerateRecommendationsView(views.APIView):
                     if not mood_obj: continue
 
                     for movie in mood_rec.movies:
+                        # Busca o pôster
                         thumbnail_url = tmdb_service.get_poster_url(title=movie.title, year=movie.year)
                         
-                        RecommendationItem.objects.create(
-                            recommendation_set=new_set,
-                            mood=mood_obj,
-                            external_id=f"tmdb:{movie.title}-{movie.year}",
-                            title=movie.title,
-                            rank=movie.rank,
-                            thumbnail_url=thumbnail_url,
-                            movie_metadata=json.dumps(movie.model_dump())
+                        # Prepara o objeto em memória, mas NÃO salva ainda
+                        items_to_create.append(
+                            RecommendationItem(
+                                recommendation_set=new_set,
+                                mood=mood_obj,
+                                external_id=f"tmdb:{movie.title}-{movie.year}",
+                                title=movie.title,
+                                rank=movie.rank,
+                                thumbnail_url=thumbnail_url,
+                                movie_metadata=json.dumps(movie.model_dump())
+                            )
                         )
+                
+                # Após o loop, salva TODOS os itens de uma vez no banco de dados
+                if items_to_create:
+                    RecommendationItem.objects.bulk_create(items_to_create)
 
         except Exception as e:
             print(f"Erro ao processar e salvar recomendações: {e}")
             return Response({"error": "Ocorreu um erro ao salvar as recomendações."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # 4. Retornar o novo conjunto
-        serializer = RecommendationSetSerializer(new_set)
+        # É necessário recarregar o objeto da DB para que o serializer veja os 'items' criados via bulk_create
+        final_set = RecommendationSet.objects.prefetch_related('items').get(id=new_set.id)
+        serializer = RecommendationSetSerializer(final_set)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
