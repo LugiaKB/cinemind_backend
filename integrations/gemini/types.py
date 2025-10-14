@@ -11,9 +11,12 @@ class Input(BaseModel):
     preferences: List[str] = Field(..., description="Lista de gêneros e temas favoritos do usuário.")
     score: Dict[str, float] = Field(..., description="Dicionário com os scores de personalidade do Big Five.")
     blacklist: List[BlacklistedMovieInput] = Field(default_factory=list, description="Lista de filmes a serem evitados.")
+    # --- NOVO CAMPO ADICIONADO ---
+    target_mood: str = Field(..., description="O humor específico para o qual as recomendações devem ser geradas.")
 
 class Movie(BaseModel):
-    rank: Annotated[int, Field(description="Rank do filme dentro de seu humor (1 ou 2)")] # <-- ALTERAÇÃO AQUI
+    # --- DESCRIÇÃO ATUALIZADA ---
+    rank: Annotated[int, Field(description="Rank do filme dentro de seu humor (1, 2, ou 3)")]
     title: Annotated[str, Field(description="Título do filme recomendado")]
     year: Annotated[int, Field(description="Ano de lançamento do filme")]
     synopsis: Annotated[str, Field(description="Breve sinopse do filme")]
@@ -24,11 +27,12 @@ class Movie(BaseModel):
 
 class MoodRecommendations(BaseModel):
     mood: Annotated[str, Field(description="A categoria de humor para estas recomendações")]
-    # --- ALTERAÇÃO AQUI ---
-    movies: Annotated[List[Movie], Field(description="Uma lista de exatamente 2 filmes ranqueados para este humor")]
+    # --- DESCRIÇÃO ATUALIZADA ---
+    movies: Annotated[List[Movie], Field(description="Uma lista de exatamente 3 filmes ranqueados para este humor")]
 
 class Output(BaseModel):
+    # O output agora é uma única recomendação de humor, não mais uma lista
     recommendations: Annotated[
-        List[MoodRecommendations], 
-        Field(description="Uma lista contendo recomendações para cada um dos 5 humores.")
+        MoodRecommendations, 
+        Field(description="Recomendações para o humor solicitado.")
     ]
