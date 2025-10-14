@@ -5,6 +5,9 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
+# --- IMPORTAÇÃO ADICIONADA ---
+from concurrent.futures import ThreadPoolExecutor
+
 from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer
 
 # Modelos
@@ -85,6 +88,7 @@ class GenerateMoodRecommendationsView(views.APIView):
         description="Gera 3 recomendações para o humor fornecido e as anexa ao set de recomendação especificado."
     )
     def post(self, request, set_id, *args, **kwargs):
+        # ... (validação inicial e busca de dados do perfil - sem alterações) ...
         serializer = GenerateMoodRecommendationsSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -132,14 +136,23 @@ class GenerateMoodRecommendationsView(views.APIView):
 
         items_to_create = []
         try:
-            # --- CORREÇÃO APLICADA AQUI ---
-            # Extraímos o primeiro (e único) item da lista de recomendações.
             mood_rec = recommendations_output.recommendations[0]
             tmdb_service = TMDbService()
+            movies_from_gemini = mood_rec.movies
 
-            for movie in mood_rec.movies:
-                thumbnail_url = tmdb_service.get_poster_url(title=movie.title, year=movie.year)
-                
+            # --- LÓGICA DE OTIMIZAÇÃO APLICADA AQUI ---
+            
+            # 1. Usamos um ThreadPoolExecutor para fazer as chamadas de rede em paralelo
+            with ThreadPoolExecutor(max_workers=len(movies_from_gemini)) as executor:
+                # 2. Submetemos todas as buscas de pôster ao mesmo tempo.
+                #    O `executor.map` mantém a ordem dos resultados.
+                poster_urls = list(executor.map(
+                    lambda movie: tmdb_service.get_poster_url(title=movie.title, year=movie.year),
+                    movies_from_gemini
+                ))
+
+            # 3. Agora que temos todas as URLs, montamos os objetos para salvar no banco
+            for i, movie in enumerate(movies_from_gemini):
                 items_to_create.append(
                     RecommendationItem(
                         recommendation_set=recommendation_set,
@@ -147,7 +160,7 @@ class GenerateMoodRecommendationsView(views.APIView):
                         external_id=f"tmdb:{movie.title}-{movie.year}",
                         title=movie.title,
                         rank=movie.rank,
-                        thumbnail_url=thumbnail_url,
+                        thumbnail_url=poster_urls[i], # Pegamos a URL da lista de resultados
                         movie_metadata=json.dumps(movie.model_dump())
                     )
                 )
