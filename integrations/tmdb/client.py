@@ -17,25 +17,46 @@ class TMDbClient:
 
     def search_movie(self, title: str, year: int) -> Optional[Dict[str, Any]]:
         """
-        Busca por um filme específico pelo título e ano.
-        A busca primária é feita pelo título, e o ano é usado para filtrar os resultados.
+        Busca por um filme específico pelo título e ano, com fallback para uma busca mais ampla.
         """
         search_url = f"{self.BASE_URL}/search/movie"
-        params = {
+        
+        # Tentativa 1: Busca específica com título e ano
+        params_with_year = {
+            "api_key": self.api_key,
+            "query": title,
+            "language": "pt-BR",
+            "year": year,
+            "include_adult": "false"
+        }
+        
+        try:
+            response = requests.get(search_url, params=params_with_year, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("results"):
+                return data
+        except requests.RequestException:
+            # Ignora erros para tentar a busca mais ampla
+            pass
+
+        # Tentativa 2: Busca ampla apenas com o título, e depois filtra pelo ano
+        params_without_year = {
             "api_key": self.api_key,
             "query": title,
             "language": "pt-BR",
             "include_adult": "false"
         }
+
         try:
-            response = requests.get(search_url, params=params, timeout=5)
+            response = requests.get(search_url, params=params_without_year, timeout=5)
             response.raise_for_status()
             data = response.json()
 
             if not data.get("results"):
                 return None
 
-            # Filtra os resultados para encontrar a correspondência mais próxima do ano
+            # Filtra os resultados para encontrar a melhor correspondência pelo ano
             best_match = None
             for movie in data["results"]:
                 release_date = movie.get("release_date")
@@ -44,11 +65,13 @@ class TMDbClient:
                     break
             
             # Se não encontrar uma correspondência exata do ano, retorna o primeiro resultado
-            if not best_match:
+            if not best_match and data["results"]:
                 best_match = data["results"][0]
 
-            # Retorna um dicionário no mesmo formato que a resposta original da API
-            return {"results": [best_match]}
+            if best_match:
+                return {"results": [best_match]}
+            
+            return None
 
         except requests.RequestException as e:
             print(f"Erro ao chamar a API do TMDb para '{title}': {e}")
