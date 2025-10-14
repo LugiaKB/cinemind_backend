@@ -5,7 +5,10 @@ from integrations.gemini.client import GeminiClient
 from integrations.gemini.types import Input, Output
 
 class GeminiService:
-    RECOMMENDATION_MODEL = "gemini-1.5-flash"
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Mudamos do 'flash' para o 'pro', um modelo mais estável e amplamente disponível,
+    # para resolver o erro '404 NOT_FOUND' da API.
+    RECOMMENDATION_MODEL = "gemini-2.5-flash"
 
     def __init__(self):
         self.client = GeminiClient(model=self.RECOMMENDATION_MODEL)
@@ -18,7 +21,7 @@ class GeminiService:
             "em parâmetros de busca eficazes para uma API de filmes como o TMDb. "
             "Sua resposta deve estar EXCLUSIVAMENTE no formato JSON, aderindo ao esquema fornecido.\n\n"
             "**Guia de Interpretação dos Traços de Personalidade (Big Five/OCEAN):**\n"
-            # ... (o resto do guia de personalidade não precisa mudar) ...
+            # ... (o resto do guia de personalidade não precisa de mudar) ...
             "  - **Score Baixo (Estabilidade Emocional)**: Calma, resiliência. Geralmente são flexíveis e apreciam uma vasta gama de tons emocionais sem se sentirem sobrecarregados.\n\n"
         )
 
@@ -55,6 +58,11 @@ class GeminiService:
             print("ERRO DE GERAÇÃO DE PARÂMETROS: A resposta da API foi nula.")
             return None
         
+        # Adicionamos uma verificação extra para lidar com erros da API
+        if raw_response.get("status") == "error":
+            print(f"ERRO DE GERAÇÃO DE PARÂMETROS: {raw_response.get('message', 'Erro desconhecido da API')}")
+            return None
+
         try:
             return Output(**raw_response)
         except Exception as e:
