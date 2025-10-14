@@ -1,5 +1,3 @@
-# recommendations/views.py
-
 import json
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
@@ -7,24 +5,83 @@ from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 from concurrent.futures import ThreadPoolExecutor
 
-from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer
+from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer, GenreSerializer, RecommendationSetSerializer, ProfileGenreSerializer
 
 # Modelos
 from .models import (
     Genre, RecommendationSet, ProfileGenre, Mood, RecommendationItem, BlacklistedMovie
 )
-# Serializers
-from .serializers import (
-    GenreSerializer, RecommendationSetSerializer, ProfileGenreSerializer
-)
 # Integrações
 from integrations.gemini.service import GeminiService
-from integrations.gemini.types import Input as GeminiInput
+from integrations.gemini.types import Input as GeminiInput, BlacklistedMovieInput
 from integrations.tmdb.service import TMDbService
 
+# --- VIEWS RESTAURADAS ---
 
-# ... (As views GenreListView, ActiveRecommendationSetView, SetFavoriteGenresView, CreateRecommendationSetView não mudam) ...
+class GenreListView(generics.ListAPIView):
+    """
+    Endpoint para listar todos os géneros de filmes disponíveis.
+    """
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
+class ActiveRecommendationSetView(generics.RetrieveAPIView):
+    """
+    Endpoint para buscar o conjunto de recomendações ativo do utilizador.
+    """
+    serializer_class = RecommendationSetSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return RecommendationSet.objects.prefetch_related('items').filter(user=self.request.user, is_active=True).last()
+
+class SetFavoriteGenresView(views.APIView):
+    """
+    Define os géneros favoritos de um utilizador.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = SetFavoriteGenresSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        genre_ids = serializer.validated_data['genre_ids']
+        profile = request.user.profile
+
+        valid_genres = Genre.objects.filter(id__in=genre_ids)
+        if len(valid_genres) != len(genre_ids):
+            return Response({"error": "Um ou mais IDs de género são inválidos."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                ProfileGenre.objects.filter(profile=profile).delete()
+                profile_genres_to_create = [
+                    ProfileGenre(profile=profile, genre=genre) for genre in valid_genres
+                ]
+                ProfileGenre.objects.bulk_create(profile_genres_to_create)
+        except Exception as e:
+            print(f"Erro ao salvar géneros favoritos: {e}")
+            return Response({"error": "Ocorreu um erro ao salvar as suas preferências."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        response_serializer = ProfileGenreSerializer(ProfileGenre.objects.filter(profile=profile), many=True)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+class CreateRecommendationSetView(generics.CreateAPIView):
+    """
+    Cria um novo conjunto de recomendações vazio e ativo.
+    """
+    serializer_class = RecommendationSetSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        RecommendationSet.objects.filter(user=user, is_active=True).update(is_active=False)
+        serializer.save(user=user, is_active=True)
+
+# --- VIEW PRINCIPAL DE ALTA PERFORMANCE ---
 
 class GenerateMoodRecommendationsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -48,13 +105,10 @@ class GenerateMoodRecommendationsView(views.APIView):
         except (RecommendationSet.DoesNotExist, Mood.DoesNotExist):
             return Response({"error": "ID de Set ou Mood inválido."}, status=status.HTTP_404_NOT_FOUND)
 
-        # --- INÍCIO DO NOVO FLUXO DE ALTA PERFORMANCE ---
-
-        # 1. Coletar perfil do usuário (rápido)
         profile = user.profile
         favorite_genres = [pg.genre.name for pg in ProfileGenre.objects.filter(profile=profile)]
         if not favorite_genres:
-            return Response({"error": "Gêneros favoritos não definidos."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Géneros favoritos não definidos."}, status=status.HTTP_400_BAD_REQUEST)
 
         personality_scores = {
             "openness": profile.openness, "conscientiousness": profile.conscientiousness,
@@ -73,13 +127,11 @@ class GenerateMoodRecommendationsView(views.APIView):
             target_mood=mood.name
         )
 
-        # 2. Chamar Gemini para obter PARÂMETROS DE BUSCA (2-4s)
         gemini_service = GeminiService()
         search_params = gemini_service.get_search_parameters(gemini_input)
         if not search_params:
             return Response({"error": "Não foi possível traduzir o perfil em parâmetros de busca."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        # 3. Converter nomes em IDs do TMDb (rápido)
         tmdb_service = TMDbService()
         genre_map = tmdb_service.get_genre_map()
         genre_ids = [genre_map[name] for name in search_params.genres if name in genre_map]
@@ -88,10 +140,8 @@ class GenerateMoodRecommendationsView(views.APIView):
         if not genre_ids and not keyword_ids:
              return Response({"error": "Não foi possível encontrar critérios de busca válidos."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 4. Descobrir filmes no TMDb (0.5s)
         candidate_movies = tmdb_service.discover_movies(genre_ids, keyword_ids)
 
-        # 5. Filtrar blacklist e selecionar os 5 melhores (0.01s)
         final_movies = []
         for movie in candidate_movies:
             if movie.get('title', '').lower() not in blacklist_titles:
@@ -102,14 +152,12 @@ class GenerateMoodRecommendationsView(views.APIView):
         if not final_movies:
             return Response({"error": "Nenhum filme encontrado para os critérios. Tente novamente."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 6. Buscar pôsteres em paralelo (1-3s)
         with ThreadPoolExecutor(max_workers=len(final_movies)) as executor:
             poster_urls = list(executor.map(
                 lambda movie: tmdb_service.get_poster_url(title=movie.get('title', ''), year=int(movie.get('release_date', '0000').split('-')[0])),
                 final_movies
             ))
 
-        # 7. Salvar e retornar (rápido)
         items_to_create = []
         for i, movie_data in enumerate(final_movies):
             items_to_create.append(
