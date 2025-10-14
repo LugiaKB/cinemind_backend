@@ -5,12 +5,13 @@ from integrations.gemini.client import GeminiClient
 from integrations.gemini.types import Input, Output
 
 class GeminiService:
-    RECOMMENDATION_MODEL = "gemini-2.5-flash"
+    RECOMMENDATION_MODEL = "gemini-1.5-flash" # Mantido ou pode ser "gemini-1.5-pro"
 
     def __init__(self):
         self.client = GeminiClient(model=self.RECOMMENDATION_MODEL)
 
     def _build_system_instruction(self) -> str:
+        # O system instruction (guia de personalidade) permanece o mesmo.
         return (
             "Você é um assistente de recomendação de filmes altamente especializado. "
             "Sua função é analisar o perfil de um usuário e sugerir filmes que se alinhem perfeitamente "
@@ -44,7 +45,7 @@ class GeminiService:
         personality_scores = "\n".join([f"- {trait}: {score}" for trait, score in user_data.score.items()])
         blacklist_titles = ', '.join([movie.title for movie in user_data.blacklist]) if user_data.blacklist else "Nenhum"
 
-        # --- ALTERAÇÃO PRINCIPAL AQUI ---
+        # --- PROMPT TOTALMENTE REFEITO PARA FOCAR EM UM ÚNICO HUMOR ---
         return (
             "Analise o perfil de usuário a seguir e gere as recomendações de acordo com as regras definidas.\n\n"
             "**Perfil do Usuário:**\n"
@@ -52,12 +53,7 @@ class GeminiService:
             f"- Traços de Personalidade (Scores):\n{personality_scores}\n"
             f"- Filmes a Evitar: {blacklist_titles}\n\n"
             "**Sua Tarefa:**\n"
-            "Gere uma lista curada contendo um total de **10 recomendações de filmes**. A seleção deve ser balanceada para cobrir 5 emoções principais, com **exatamente 2 filmes ranqueados (rank 1, 2)** para cada uma das seguintes emoções:\n\n"
-            "1.  **Alegria** (Filmes divertidos, otimistas, comédias)\n"
-            "2.  **Tristeza** (Filmes emotivos, dramas, que provocam reflexão)\n"
-            "3.  **Medo/Tensão** (Filmes de suspense, terror, thrillers)\n"
-            "4.  **Curiosidade** (Filmes de mistério, ficção científica, conceitos intrigantes)\n"
-            "5.  **Relaxamento** (Filmes leves, confortáveis, romances tranquilos)\n\n"
+            f"Gere uma lista curada contendo **exatamente 3 recomendações de filmes ranqueados (rank 1, 2, 3)** para o humor específico: **'{user_data.target_mood}'**.\n\n"
             "Para cada filme, forneça uma justificativa clara (reason_for_recommendation) que conecte o filme diretamente ao perfil do usuário (gêneros e personalidade)."
         )
 
