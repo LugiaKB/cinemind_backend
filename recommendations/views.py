@@ -2,6 +2,8 @@
 
 import json
 from django.db import transaction
+# --- IMPORTAÇÃO ADICIONADA ---
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer
@@ -65,34 +67,26 @@ class SetFavoriteGenresView(views.APIView):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
-# --- NOVA VIEW ---
 class CreateRecommendationSetView(generics.CreateAPIView):
-    """
-    [FLUXO 1] Cria um novo conjunto de recomendações vazio e ativo.
-    Isso deve ser chamado depois que o usuário preenche o formulário,
-    mas antes de selecionar o primeiro humor.
-    """
     serializer_class = RecommendationSetSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         user = self.request.user
-        # Desativa qualquer outro conjunto ativo para este usuário
         RecommendationSet.objects.filter(user=user, is_active=True).update(is_active=False)
-        # Cria o novo conjunto associado ao usuário
         serializer.save(user=user, is_active=True)
 
 
-# --- NOVA VIEW ---
 class GenerateMoodRecommendationsView(views.APIView):
-    """
-    [FLUXO 2] Gera 3 recomendações para um humor específico e as salva
-    dentro de um conjunto de recomendações existente.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
+    # --- DECORATOR ADICIONADO PARA CORRIGIR A DOCUMENTAÇÃO ---
+    @extend_schema(
+        request=GenerateMoodRecommendationsSerializer,
+        responses={201: RecommendationItemSerializer(many=True)},
+        description="Gera 3 recomendações para o humor fornecido e as anexa ao set de recomendação especificado."
+    )
     def post(self, request, set_id, *args, **kwargs):
-        # Valida o corpo da requisição (espera por 'mood_id')
         serializer = GenerateMoodRecommendationsSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -100,7 +94,6 @@ class GenerateMoodRecommendationsView(views.APIView):
         mood_id = serializer.validated_data['mood_id']
         user = request.user
 
-        # Valida se o set pertence ao usuário e se o mood existe
         try:
             recommendation_set = RecommendationSet.objects.get(id=set_id, user=user, is_active=True)
             mood = Mood.objects.get(id=mood_id)
@@ -109,7 +102,6 @@ class GenerateMoodRecommendationsView(views.APIView):
         except Mood.DoesNotExist:
             return Response({"error": "Mood inválido."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 1. Coletar dados do perfil (mesma lógica de antes)
         profile = user.profile
         favorite_genres = [pg.genre.name for pg in ProfileGenre.objects.filter(profile=profile)]
         if not favorite_genres:
@@ -124,15 +116,13 @@ class GenerateMoodRecommendationsView(views.APIView):
         blacklist_movies = BlacklistedMovie.objects.filter(user=user)
         blacklist_input = [BlacklistedMovieInput(title=movie.title) for movie in blacklist_movies]
 
-        # Monta o input para o Gemini, agora com o humor específico
         gemini_input = GeminiInput(
             preferences=favorite_genres,
             score=personality_scores,
             blacklist=blacklist_input,
-            target_mood=mood.name # Adiciona o humor alvo
+            target_mood=mood.name
         )
 
-        # 2. Chamar o serviço do Gemini
         try:
             gemini_service = GeminiService()
             recommendations_output = gemini_service.get_recommendations(gemini_input)
@@ -142,7 +132,6 @@ class GenerateMoodRecommendationsView(views.APIView):
             print(f"Erro ao chamar o serviço Gemini: {e}")
             return Response({"error": "Falha na comunicação com o serviço de IA."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        # 3. Processar e Salvar as 3 Recomendações
         items_to_create = []
         try:
             mood_rec = recommendations_output.recommendations
@@ -154,7 +143,7 @@ class GenerateMoodRecommendationsView(views.APIView):
                 items_to_create.append(
                     RecommendationItem(
                         recommendation_set=recommendation_set,
-                        mood=mood, # Associa ao mood correto
+                        mood=mood,
                         external_id=f"tmdb:{movie.title}-{movie.year}",
                         title=movie.title,
                         rank=movie.rank,
@@ -170,6 +159,5 @@ class GenerateMoodRecommendationsView(views.APIView):
             print(f"Erro ao processar e salvar recomendações: {e}")
             return Response({"error": "Ocorreu um erro ao salvar as recomendações."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 4. Retornar os itens que acabaram de ser criados
         response_serializer = RecommendationItemSerializer(created_items, many=True)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
