@@ -68,7 +68,20 @@ class SetFavoriteGenresView(views.APIView):
         response_serializer = ProfileGenreSerializer(ProfileGenre.objects.filter(profile=profile), many=True)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
+class CheckFavoriteGenresView(APIView):
+    """
+    Verifica se o usuário já cadastrou gêneros favoritos.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, *args, **kwargs):
+        """
+        Retorna `{"has_genres": true}` se o usuário tiver gêneros cadastrados,
+        e `{"has_genres": false}` caso contrário.
+        """
+        has_genres = ProfileGenre.objects.filter(profile=request.user.profile).exists()
+        return Response({"has_genres": has_genres}, status=status.HTTP_200_OK)
+        
 class CreateRecommendationSetView(generics.CreateAPIView):
     serializer_class = RecommendationSetSerializer
     permission_classes = [permissions.IsAuthenticated]
