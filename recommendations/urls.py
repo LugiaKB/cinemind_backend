@@ -9,13 +9,15 @@ from .views import (
     CreateRecommendationSetView,
     GenerateMoodRecommendationsView,
     CheckFavoriteGenresView,
+    MoodListView,
 )
 
 urlpatterns = [
     # Rotas de setup
     path('genres/', GenreListView.as_view(), name='genre-list'),
+    path('moods/', MoodListView.as_view(), name='mood-list'),
     path('genres/set-favorites/', SetFavoriteGenresView.as_view(), name='set-favorite-genres'),
-    path('genres/check-favorites/', CheckFavoriteGenresView.as_view(), name='check-favorite-genres'), # Adicione esta linha
+    path('genres/check-favorites/', CheckFavoriteGenresView.as_view(), name='check-favorite-genres'),
     
     # Rota para buscar o set ativo (continua útil para o frontend)
     path('active-set/', ActiveRecommendationSetView.as_view(), name='active-recommendation-set'),
