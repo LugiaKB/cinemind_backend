@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from concurrent.futures import ThreadPoolExecutor
 
-from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer
+from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer, MoodSerializer
 
 # Modelos
 from .models import (
@@ -28,6 +28,15 @@ from integrations.tmdb import TMDbService
 class GenreListView(generics.ListAPIView):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class MoodListView(generics.ListAPIView):
+    """
+    Endpoint para listar todos os moods (humores) disponíveis.
+    """
+    queryset = Mood.objects.all()
+    serializer_class = MoodSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
