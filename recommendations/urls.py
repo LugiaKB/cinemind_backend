@@ -8,6 +8,7 @@ from .views import (
     # --- NOVAS VIEWS ---
     CreateRecommendationSetView,
     GenerateMoodRecommendationsView,
+    CheckFavoriteGenresView,
 )
 
 urlpatterns = [
