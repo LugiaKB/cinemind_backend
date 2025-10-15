@@ -24,6 +24,21 @@ class QuestionListView(generics.ListAPIView):
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+class CheckAnswersView(views.APIView):
+    """
+    Verifica se o usuário já preencheu o formulário de personalidade.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Retorna {"has_submitted": true} se o usuário já enviou respostas,
+        e {"has_submitted": false} caso contrário.
+        """
+        profile = request.user.profile
+        has_submitted = Answer.objects.filter(profile=profile).exists()
+        return Response({"has_submitted": has_submitted}, status=status.HTTP_200_OK)
+
 class SubmitAnswersView(views.APIView):
     """
     Recebe e processa as respostas do questionário de personalidade de um usuário.
