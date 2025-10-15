@@ -14,6 +14,7 @@ urlpatterns = [
     # Rotas do App
     path('questions/', QuestionListView.as_view(), name='question-list'),
     path('answers/submit/', SubmitAnswersView.as_view(), name='submit-answers'),
+    path('answers/check/', CheckAnswersView.as_view(), name='check-answers'), # Nova rota
 
     
 ]
