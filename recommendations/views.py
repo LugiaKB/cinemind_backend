@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 # --- IMPORTAÇÃO ADICIONADA ---
+from rest_framework.views import APIView
 from concurrent.futures import ThreadPoolExecutor
 
 from .serializers import SetFavoriteGenresSerializer, GenerateMoodRecommendationsSerializer, RecommendationItemSerializer
