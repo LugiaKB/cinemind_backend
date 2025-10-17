@@ -44,11 +44,15 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "django_filters",
+    # --- NOSSOS APPS ---
+    'accounts',
+    'recommendations',
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware", # Adicione esta linha
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -129,8 +133,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "CodeLeap Network API",
-    "DESCRIPTION": "API documentation for CodeLeap Network",
+    "TITLE": "CineMind API",
+    "DESCRIPTION": "API documentation for CineMind",
     "VERSION": "1.0.0",
 }
 
@@ -143,3 +147,10 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+# Configurações do CORS
+
+#CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(" ") if os.getenv("CORS_ALLOWED_ORIGINS") else []
+# ATENÇÃO: Isto permitirá que QUALQUER domínio acesse sua API.
+# Use com cuidado e garanta que suas rotas estão devidamente protegidas.
+CORS_ALLOW_ALL_ORIGINS = True

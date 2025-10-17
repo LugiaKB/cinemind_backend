@@ -7,10 +7,13 @@ For more information on this file, see
 https://docs.djangoproject.com/en/5.1/howto/deployment/wsgi/
 """
 
-import os
+# cinemind/wsgi.py
 
+import os
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cinemind.settings')
+# --- LINHA CORRIGIDA ---
+# Aponta explicitamente para as configurações de produção
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cinemind.settings.production')
 
 application = get_wsgi_application()
