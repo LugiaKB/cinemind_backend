@@ -133,8 +133,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "CodeLeap Network API",
-    "DESCRIPTION": "API documentation for CodeLeap Network",
+    "TITLE": "CineMind API",
+    "DESCRIPTION": "API documentation for CineMind",
     "VERSION": "1.0.0",
 }
 
