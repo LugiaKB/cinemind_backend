@@ -2,10 +2,10 @@
 
 Aqui está o conteúdo para o seu arquivo `CONTRIBUTING.md`:
 
-```markdown
+
 # Como Contribuir para o Cinemind
 
-Agradecemos pelo seu interesse em contribuir! Para garantir que o processo seja tranquilo para todos, por favor, siga estas diretrizes.
+Para garantir que o processo seja tranquilo para todos, por favor, siga estas diretrizes.
 
 ## Estrutura de Branches
 
@@ -16,13 +16,13 @@ Nosso fluxo de trabalho utiliza duas branches principais de desenvolvimento, cad
 
 * **`develop-hybrid`**
     Esta branch é dedicada a testes de performance e otimização. Especificamente, ela é usada para validar melhorias no tempo de resposta e otimização de chamadas à API, antes que essas mudanças sejam consideradas estáveis o suficiente para a `develop`.
-```
+
 
 ---
 
 ## Manual de Endpoints para Frontend (Fluxo de Usuário)
 
-Aqui está o guia organizado com o fluxo de chamadas da API, mostrando o método, a URL e as notas de fluxo necessárias para o frontend.
+Este é o guia organizado com o fluxo de chamadas da API, mostrando o método, a URL e as notas de fluxo necessárias para o frontend.
 
 ### 1. Cadastro (Register)
 
