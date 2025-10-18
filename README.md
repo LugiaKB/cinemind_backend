@@ -27,22 +27,30 @@ O Cinemind é um sistema de recomendação de filmes personalizado que utiliza o
 
 ## Endpoints da API
 
-A seguir estão os principais endpoints da API. Para uma documentação completa e interativa, acesse `/api/docs/` após iniciar o servidor.
+A seguir estão os principais endpoints da API. Para uma documentação completa e interativa, acesse a URL da sua API: `https://cinemind-api-mj06.onrender.com/api/docs`
 
 ### Contas (`/api/accounts/`)
 
-* `POST /register/`: Registra um novo usuário.
-* `POST /token/`: Obtém um par de tokens (acesso e atualização).
-* `POST /token/refresh/`: Atualiza um token de acesso expirado.
-* `GET /questions/`: Lista todas as perguntas do questionário de personalidade.
-* `POST /answers/submit/`: Envia as respostas do questionário.
+* `POST /api/accounts/register/`: Registra um novo usuário.
+* `POST /api/accounts/token/`: Obtém um par de tokens (acesso e atualização).
+* `POST /api/accounts/token/refresh/`: Atualiza um token de acesso expirado.
+* `GET /api/accounts/questions/`: Lista todas as perguntas do questionário de personalidade.
+* `POST /api/accounts/answers/submit/`: Envia as respostas do questionário.
+* `GET /api/accounts/answers/check/`: Verifica se o usuário já respondeu ao questionário.
 
 ### Recomendações (`/api/recommendations/`)
 
-* `GET /genres/`: Lista todos os gêneros de filmes disponíveis.
-* `POST /genres/set-favorites/`: Define os gêneros de filmes favoritos do usuário.
-* `GET /active-set/`: Retorna o conjunto de recomendações ativo mais recente para o usuário.
-* `POST /generate/`: Gera um novo conjunto de recomendações personalizadas.
+* `GET /api/recommendations/genres/`: Lista todos os gêneros de filmes disponíveis.
+* `POST /api/recommendations/genres/set-favorites/`: Define os gêneros de filmes favoritos do usuário.
+* `GET /api/recommendations/genres/check-favorites/`: Verifica os gêneros favoritos definidos pelo usuário.
+* `GET /api/recommendations/moods/`: Lista os humores disponíveis para recomendação.
+* `POST /api/recommendations/sets/`: Gera um novo conjunto de recomendações personalizadas (endpoint principal da IA).
+* `GET /api/recommendations/active-set/`: Retorna o conjunto de recomendações ativo mais recente para o usuário.
+* `POST /api/recommendations/sets/{set_id}/generate-for-mood/`: Gera recomendações para um humor específico dentro de um conjunto existente.
+
+### Schema (`/api/schema/`)
+
+* `GET /api/schema/`: Obtém o schema OpenAPI (usado pelo Swagger/ReDoc).
 
 ## Instalação e Configuração
 
