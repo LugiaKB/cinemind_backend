@@ -1,22 +1,61 @@
-## CONTRIBUTING.md
-
-Aqui está o conteúdo para o seu arquivo `CONTRIBUTING.md`:
-
-
 # Como Contribuir para o Cinemind
 
-Para garantir que o processo seja tranquilo para todos, por favor, siga estas diretrizes.
+Bem-vindo(a) e obrigado(a) pelo seu interesse em contribuir! Para garantir que o processo seja tranquilo para todos, por favor, siga estas diretrizes.
+
+## Convenções de Commit
+
+Para manter um histórico de versão limpo, legível e fácil de rastrear, pedimos que siga um padrão para as mensagens de commit. Cada mensagem deve ser prefixada com um tipo que descreve a natureza da mudança.
+
+Os principais prefixos que usamos são:
+
+* **`feat:`** (Feature)
+    * Adiciona uma nova funcionalidade ao projeto. Deve indicar mudanças perceptíveis para o usuário final ou que ampliem o comportamento do sistema.
+    * *Exemplo: `feat: implementar login com Google`*
+
+* **`fix:`** (Bug Fix)
+    * Corrige um bug ou comportamento incorreto no código. Serve para restaurar o funcionamento esperado sem adicionar novas funcionalidades.
+    * *Exemplo: `fix: corrigir erro de cálculo do desconto`*
+
+Outros prefixos comuns que você pode usar incluem `docs:`, `style:`, `refactor:`, `test:`, e `chore:`.
+
+## Processo de Pull Request (PR)
+
+Antes de abrir um Pull Request para integrar seu código, por favor, revise o checklist abaixo para garantir que sua contribuição está pronta.
+
+### Checklist antes de submeter o código para integração
+
+Antes de abrir um Pull Request, verifique se todos os pontos abaixo estão concluídos:
+
+**1. Qualidade do Código**
+* [ ] O código está limpo, legível e segue o padrão de estilo do projeto.
+* [ ] As mensagens de commit seguem a convenção (`feat`, `fix`, `docs`, etc.).
+* [ ] Nenhum `console.log` ou código de depuração ficou no repositório.
+
+**2. Testes**
+* [ ] Todos os testes existentes estão passando.
+* [ ] Novas funcionalidades possuem testes cobrindo os principais casos.
+* [ ] O projeto executa sem erros ou *warnings*.
+
+**3. Documentação**
+* [ ] `README`, comentários e/ou docs foram atualizados conforme as mudanças.
+* [ ] Exemplos de uso ou instruções foram revisados, se necessário.
+
+**4. Dependências**
+* [ ] Nenhuma dependência desnecessária foi adicionada.
+* [ ] Novas dependências são justificáveis e seguras.
 
 ## Estrutura de Branches
 
-Nosso fluxo de trabalho utiliza duas branches principais de desenvolvimento, cada uma com um propósito específico:
+Nosso fluxo de trabalho utiliza branches específicas para organizar o desenvolvimento:
+
+* **`main`**
+    Esta é a branch de produção. Ela contém a versão final, revisada e estável (release) do projeto. *Pushs* diretos são bloqueados; ela só recebe atualizações via *merge* da `develop` após validação completa.
 
 * **`develop`**
-    Esta é a branch principal de desenvolvimento e testes. Ela representa a versão mais estável e validada das funcionalidades que estão sendo preparadas para a próxima release. Todo código novo deve, eventualmente, ser mesclado aqui após a validação.
+    Esta é a branch principal de desenvolvimento e testes. Ela representa a versão mais estável das funcionalidades que estão sendo preparadas para a próxima *release*. Todo código novo deve, eventualmente, ser mesclado aqui após a validação.
 
 * **`develop-hybrid`**
     Esta branch é dedicada a testes de performance e otimização. Especificamente, ela é usada para validar melhorias no tempo de resposta e otimização de chamadas à API, antes que essas mudanças sejam consideradas estáveis o suficiente para a `develop`.
-
 
 ---
 
