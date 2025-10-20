@@ -2,29 +2,118 @@
 
 Bem-vindo(a) e obrigado(a) pelo seu interesse em contribuir! Para garantir que o processo seja tranquilo para todos, por favor, siga estas diretrizes.
 
-## Convenções de Commit
+## Configurando o Ambiente Local
 
-Para manter um histórico de versão limpo, legível e fácil de rastrear, pedimos que siga um padrão para as mensagens de commit. Cada mensagem deve ser prefixada com um tipo que descreve a natureza da mudança.
+Para começar a desenvolver, siga estes passos para configurar o projeto na sua máquina.
 
-Os principais prefixos que usamos são:
+1.  **Faça um Fork e Clone o repositório:**
+    * Primeiro, faça um *fork* do repositório para a sua conta no GitHub.
+    * Depois, clone o *seu fork* localmente:
+    ```bash
+    git clone [https://github.com/SEU-USUARIO/cinemind.git](https://github.com/SEU-USUARIO/cinemind.git)
+    cd cinemind
+    ```
+
+2.  **Instale as Dependências:**
+    *(Assumindo que o projeto usa Node.js/npm)*
+    ```bash
+    npm install
+    ```
+
+3.  **Configure as Variáveis de Ambiente:**
+    Crie um arquivo `.env` na raiz do projeto, copiando o arquivo de exemplo.
+    ```bash
+    cp .env.example .env
+    ```
+    *Obs: Edite o arquivo `.env` com as chaves de API e configurações locais necessárias para rodar o projeto.*
+
+4.  **Comandos Úteis:**
+    * Para rodar o projeto em modo de desenvolvimento:
+        ```bash
+        npm run dev
+        ```
+    * Para rodar os testes:
+        ```bash
+        npm test
+        ```
+
+---
+
+## Nosso Fluxo de Colaboração
+
+Nosso processo é baseado em *Issues* e *Pull Requests* (PRs).
+
+1.  **Encontre ou crie uma Issue:**
+    * Antes de começar, verifique no [quadro de Issues](https://github.com/USUARIO-DO-PROJETO/cinemind/issues) se já não existe uma *issue* para o que você quer fazer.
+    * Se for um bug ou uma *feature* nova, crie uma *issue* detalhada para que o time possa discuti-la.
+
+2.  **Crie sua Branch:**
+    * A partir da branch `develop` do seu *fork*, crie uma nova *branch* seguindo nossas convenções de nomenclatura (veja abaixo).
+
+3.  **Desenvolva e Faça Commits:**
+    * Faça suas alterações.
+    * Faça commits atômicos (pequenos e focados) usando as nossas [Convenções de Commit](#convenções-de-commit).
+
+4.  **Abra um Pull Request (PR):**
+    * Quando terminar, envie (push) sua *branch* para o seu *fork* no GitHub.
+    * Abra um *Pull Request* (PR) da sua *branch* para a branch `develop` do repositório principal.
+    * Preencha o *template* do PR, detalhando o que foi feito e vinculando a *issue* que você está resolvendo (ex: `Resolves #42`).
+    * Certifique-se de que seu PR passa em todos os *checks* (testes, lint, etc.).
+
+5.  **Revisão:**
+    * Aguarde a revisão do seu código. O time poderá solicitar alterações antes de aprovar e fazer o *merge*.
+
+---
+
+## Convenções de Nomenclatura
+
+### 1. Estrutura de Branches
+
+Usamos branches específicas para organizar o desenvolvimento:
+
+* **`main`**
+    Esta é a branch de produção. Ela contém a versão final, revisada e estável (release). *Pushs* diretos são bloqueados.
+
+* **`develop`**
+    Esta é a branch principal de desenvolvimento. Todo código novo deve ser mesclado aqui (via PR) para testes antes de ir para a `main`. **Sua branch deve ser criada a partir desta.**
+
+* **`develop-hybrid`**
+    Branch dedicada a testes de performance e otimização de chamadas à API.
+
+* **Branches de Trabalho (Sua Branch)**
+    Ao criar uma branch para uma *feature* ou *fix*, siga este padrão:
+
+    * **Features:** `feat/<nome-da-feature>`
+        * *Exemplo: `feat/login-com-google`*
+    * **Correções (Fixes):** `fix/<descricao-do-bug>`
+        * *Exemplo: `fix/calculo-incorreto-desconto`*
+    * **Documentação:** `docs/<topico-documentado>`
+        * *Exemplo: `docs/atualiza-contributing`*
+
+### 2. Convenções de Commit
+
+Para manter um histórico de versão limpo e legível, cada mensagem de commit deve ser prefixada com um tipo:
 
 * **`feat:`** (Feature)
-    * Adiciona uma nova funcionalidade ao projeto. Deve indicar mudanças perceptíveis para o usuário final ou que ampliem o comportamento do sistema.
+    * Adiciona uma nova funcionalidade ao projeto.
     * *Exemplo: `feat: implementar login com Google`*
 
 * **`fix:`** (Bug Fix)
-    * Corrige um bug ou comportamento incorreto no código. Serve para restaurar o funcionamento esperado sem adicionar novas funcionalidades.
+    * Corrige um bug ou comportamento incorreto no código.
     * *Exemplo: `fix: corrigir erro de cálculo do desconto`*
 
-Outros prefixos comuns que você pode usar incluem `docs:`, `style:`, `refactor:`, `test:`, e `chore:`.
+* **Outros prefixos comuns:**
+    * `docs:` (Atualizações na documentação)
+    * `style:` (Ajustes de formatação, sem mudança lógica)
+    * `refactor:` (Refatoração de código sem alterar comportamento)
+    * `test:` (Adição ou correção de testes)
+    * `chore:` (Manutenção de build, scripts, dependências)
 
-## Processo de Pull Request (PR)
+---
 
-Antes de abrir um Pull Request para integrar seu código, por favor, revise o checklist abaixo para garantir que sua contribuição está pronta.
+## Checklist antes de submeter o código para integração
 
-### Checklist antes de submeter o código para integração
-
-Antes de abrir um Pull Request, verifique se todos os pontos abaixo estão concluídos:
+Antes de abrir um Pull Request, revise e marque os seguintes pontos:
 
 **1. Qualidade do Código**
 * [ ] O código está limpo, legível e segue o padrão de estilo do projeto.
@@ -32,7 +121,7 @@ Antes de abrir um Pull Request, verifique se todos os pontos abaixo estão concl
 * [ ] Nenhum `console.log` ou código de depuração ficou no repositório.
 
 **2. Testes**
-* [ ] Todos os testes existentes estão passando.
+* [ ] Todos os testes existentes estão passando (`npm test`).
 * [ ] Novas funcionalidades possuem testes cobrindo os principais casos.
 * [ ] O projeto executa sem erros ou *warnings*.
 
@@ -43,19 +132,6 @@ Antes de abrir um Pull Request, verifique se todos os pontos abaixo estão concl
 **4. Dependências**
 * [ ] Nenhuma dependência desnecessária foi adicionada.
 * [ ] Novas dependências são justificáveis e seguras.
-
-## Estrutura de Branches
-
-Nosso fluxo de trabalho utiliza branches específicas para organizar o desenvolvimento:
-
-* **`main`**
-    Esta é a branch de produção. Ela contém a versão final, revisada e estável (release) do projeto. *Pushs* diretos são bloqueados; ela só recebe atualizações via *merge* da `develop` após validação completa.
-
-* **`develop`**
-    Esta é a branch principal de desenvolvimento e testes. Ela representa a versão mais estável das funcionalidades que estão sendo preparadas para a próxima *release*. Todo código novo deve, eventualmente, ser mesclado aqui após a validação.
-
-* **`develop-hybrid`**
-    Esta branch é dedicada a testes de performance e otimização. Especificamente, ela é usada para validar melhorias no tempo de resposta e otimização de chamadas à API, antes que essas mudanças sejam consideradas estáveis o suficiente para a `develop`.
 
 ---
 
