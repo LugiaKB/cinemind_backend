@@ -52,52 +52,89 @@ A seguir estão os principais endpoints da API. Para uma documentação completa
 
 * `GET /api/schema/`: Obtém o schema OpenAPI (usado pelo Swagger/ReDoc).
 
-## Instalação e Configuração
+## Instalação, configuração e execução
 
-Siga os passos abaixo para configurar o ambiente de desenvolvimento local.
+Fluxo mínimo e reproduzível para desenvolvimento local. Use este bloco como padrão também no repositório frontend.
 
-### Pré-requisitos
+## Pré-requisitos
 
-* Python 3.11
-* Pipenv
-* PostgreSQL
+- Python 3.11
+- pipenv (recomendado) ou virtualenv + pip
+- PostgreSQL (ou `DATABASE_URL` configurada)
 
-### Passos
+## Passos rápidos
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/seu-usuario/cinemind_backend.git](https://github.com/seu-usuario/cinemind_backend.git)
-    cd cinemind_backend
-    ```
-2.  **Instale as dependências:**
-    ```bash
-    pipenv install
-    ```
-3.  **Configure as variáveis de ambiente:**
-    Crie um arquivo `.env` na raiz do projeto e adicione as seguintes variáveis:
-    ```
-    DJANGO_SECRET_KEY='sua_chave_secreta_aqui'
-    GEMINI_API_KEY='sua_api_key_do_gemini'
-
-    # Configurações do Banco de Dados PostgreSQL
-    DB_NAME='cinemind_db'
-    DB_USER='seu_usuario'
-    DB_PASSWORD='sua_senha'
-    DB_HOST='localhost'
-    DB_PORT='5432'
-    ```
-4.  **Aplique as migrações do banco de dados:**
-    ```bash
-    pipenv run python manage.py migrate
-    ```
-5.  **Crie um superusuário (opcional):**
-    ```bash
-    pipenv run python manage.py createsuperuser
-    ```
-
-## Executando a Aplicação
-
-Para iniciar o servidor de desenvolvimento, execute:
+1. Clone o repositório e entre na pasta do projeto:
 
 ```bash
-pipenv run python manage.py runserver
+git clone https://github.com/seu-usuario/cinemind_backend.git
+cd cinemind_backend
+```
+
+2. Instale dependências e ative o ambiente (pipenv):
+
+```bash
+pipenv install --dev
+pipenv shell
+```
+
+### Alternativa com virtualenv
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Crie um arquivo `.env` na raiz do projeto com as variáveis necessárias (sem aspas). Exemplo mínimo:
+
+```env
+DJANGO_SECRET_KEY=troque_por_sua_chave
+GEMINI_API_KEY=AIzaSyEXEMPLO
+DB_NAME=cinemind_db
+DB_USER=cinemind_user
+DB_PASSWORD=senha_segura
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+4. Aplique migrations e (opcional) crie um superusuário:
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+5. Rode o servidor local:
+
+```bash
+python manage.py runserver
+```
+
+## Utilitários / Gemini
+
+Confirme que `GEMINI_API_KEY` está disponível antes de executar utilitários que chamam a API Gemini:
+
+```bash
+python -c "import os; print(os.getenv('GEMINI_API_KEY'))"
+python utils/run_gemini.py
+```
+
+## Cheatsheet (comandos rápidos)
+
+```bash
+pipenv install
+pipenv shell
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+python utils/run_gemini.py
+```
+
+## Dicas rápidas
+
+- Não use aspas no `.env` (use `KEY=value`).
+- Se a variável aparecer vazia, ative o virtualenv/pipenv shell antes de rodar.
+- Para garantir que scripts carreguem o `.env` explicitamente, use `load_dotenv` com o caminho absoluto para a raiz do projeto.
+
+---
